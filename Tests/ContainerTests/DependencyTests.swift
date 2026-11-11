@@ -1,5 +1,5 @@
 import XCTest
-@testable import ContainerDesk
+@testable import Container
 
 @MainActor
 final class DependencyTests: XCTestCase {

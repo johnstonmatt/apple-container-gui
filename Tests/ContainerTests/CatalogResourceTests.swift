@@ -1,5 +1,5 @@
 import XCTest
-@testable import ContainerDesk
+@testable import Container
 
 final class CatalogResourceTests: XCTestCase {
     func testBothSwiftPMBundleLayoutsAfterRelocation() throws {
@@ -7,7 +7,7 @@ final class CatalogResourceTests: XCTestCase {
             let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             defer { try? FileManager.default.removeItem(at: root) }
             let resources = root.appendingPathComponent("Container.app/Contents/Resources")
-            let file = resources.appendingPathComponent("ContainerDesk_ContainerDesk.bundle/\(path)")
+            let file = resources.appendingPathComponent("Container_Container.bundle/\(path)")
             try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
             let pages = [HelpPage(path: ["list"], help: "OVERVIEW: Relocated catalog\nUSAGE: container list")]
             try JSONEncoder().encode(pages).write(to: file)
@@ -26,7 +26,7 @@ final class CatalogResourceTests: XCTestCase {
     func testCorruptResourceIsReportedInsteadOfSilentlyUsingAnotherCatalog() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let bundle = root.appendingPathComponent("ContainerDesk_ContainerDesk.bundle")
+        let bundle = root.appendingPathComponent("Container_Container.bundle")
         try FileManager.default.createDirectory(at: bundle, withIntermediateDirectories: true)
         try Data("invalid JSON".utf8).write(to: bundle.appendingPathComponent("commands.json"))
         XCTAssertThrowsError(try CommandCatalog.bundledPages(resourceDirectories: [root])) { error in

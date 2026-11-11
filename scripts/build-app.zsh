@@ -11,15 +11,14 @@ build_stage=$(mktemp -d "$PWD/dist/.build-app.XXXXXX")
 trap 'rm -rf -- "$build_stage"' EXIT
 app="$build_stage/Container.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-cp "$bin_dir/ContainerDesk" "$app/Contents/MacOS/Container"
+cp "$bin_dir/Container" "$app/Contents/MacOS/Container"
 cp Resources/Info.plist "$app/Contents/Info.plist"
 cp Assets/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 cp scripts/install.zsh "$app/Contents/Resources/install.zsh"
-for resource_bundle in "$bin_dir"/*.bundle(N); do
-  cp -R "$resource_bundle" "$app/Contents/Resources/"
-done
+# Copy this target's resource bundle only, not stale bundles from prior builds.
+cp -R "$bin_dir/Container_Container.bundle" "$app/Contents/Resources/"
 # Both SwiftPM layouts are supported, but the catalog must actually be shipped.
-catalog_bundle="$app/Contents/Resources/ContainerDesk_ContainerDesk.bundle"
+catalog_bundle="$app/Contents/Resources/Container_Container.bundle"
 if [[ ! -f "$catalog_bundle/commands.json" && ! -f "$catalog_bundle/Contents/Resources/commands.json" ]]; then
   print -u2 -- 'Build is missing the command catalog resource bundle.'
   exit 1

@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @main
-struct ContainerDeskApp: App {
+struct ContainerApp: App {
     @State private var store = Store()
     init() {
         if ProcessInfo.processInfo.arguments.contains("--check-catalog") {

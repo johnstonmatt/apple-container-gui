@@ -78,7 +78,7 @@ build. The output is `dist/Container.app`, with bundle identifier
 `dev.johnstonmatt.container`. Local builds use ad-hoc signing; set
 `CODESIGN_IDENTITY` to a Developer ID Application identity for hardened runtime
 and timestamped signing.
-You can also open `Package.swift` in Xcode or use `swift run ContainerDesk`.
+You can also open `Package.swift` in Xcode or use `swift run Container`.
 Local builds are not notarized. The release workflow notarizes published builds.
 
 To build and install in `/Applications`, quit the app and run:
@@ -91,9 +91,7 @@ To install an existing bundle, use `zsh scripts/install.zsh dist/Container.app`.
 Set `CONTAINER_INSTALL_DIR` to choose another installation directory. Installation
 preserves the source build, stages the replacement, and restores the previous app
 if replacement fails. It refuses to overwrite an unrelated app or update while
-Container is running. The previous `Container Desk.app` has a different identity
-and is not migrated or removed. Apple's `container` CLI remains separately installed.
-The internal Swift package and module remain named `ContainerDesk`.
+Container is running. Apple's `container` CLI remains separately installed.
 
 ## CI and releases
 
@@ -174,13 +172,13 @@ RUN_CONTAINER_INTEGRATION_TESTS=1 swift test
 ```
 
 Live tests require the container service to be running and may pull `alpine:latest`.
-They create a uniquely named `containerdesk-test-*` container and clean it up,
+They create a uniquely named `container-test-*` container and clean it up,
 including on failure. The downloaded image is kept. They do not modify existing
 containers or publish images. Registry credentials, remote pushes, privileged DNS,
 Kubernetes creation, and every possible option combination require their own
 configured environment and are not exercised by the live suite.
 
-Help snapshots in `Sources/ContainerDesk/Resources/commands.json` were captured
+Help snapshots in `Sources/Container/Resources/commands.json` were captured
 from Apple container CLI 1.7.1. They describe the installed version, not a guarantee
 that future versions or optional plugins retain the same operations.
 

@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "ContainerDesk",
+    name: "Container",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "ContainerDesk", targets: ["ContainerDesk"])],
+    products: [.executable(name: "Container", targets: ["Container"])],
     targets: [
-        .executableTarget(name: "ContainerDesk", resources: [.process("Resources")]),
-        .testTarget(name: "ContainerDeskTests", dependencies: ["ContainerDesk"])
+        .executableTarget(name: "Container", resources: [.process("Resources")]),
+        .testTarget(name: "ContainerTests", dependencies: ["Container"])
     ]
 )

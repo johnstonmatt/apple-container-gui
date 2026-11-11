@@ -118,7 +118,7 @@ enum CommandCatalog {
                      Bundle.main.executableURL?.deletingLastPathComponent()].compactMap { $0 }
         }
         for root in roots {
-            let bundle = root.appendingPathComponent("ContainerDesk_ContainerDesk.bundle")
+            let bundle = root.appendingPathComponent("Container_Container.bundle")
             // Native SwiftPM uses a flat bundle; swiftbuild uses a macOS bundle.
             for relativePath in ["Contents/Resources/commands.json", "commands.json"] {
                 let url = bundle.appendingPathComponent(relativePath)

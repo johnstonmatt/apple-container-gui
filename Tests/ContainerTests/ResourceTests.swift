@@ -1,5 +1,5 @@
 import XCTest
-@testable import ContainerDesk
+@testable import Container
 
 final class ResourceTests: XCTestCase {
     private func catalog() throws -> [CommandDefinition] { CommandCatalog.definitions(try CommandCatalog.bundledPages()) }

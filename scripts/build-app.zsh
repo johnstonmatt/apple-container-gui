@@ -1,32 +1,32 @@
 #!/bin/zsh
+# Ad-hoc signing locally; Developer ID + hardened runtime for releases.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "${0:A:h}/.."
+signing_identity="${CODESIGN_IDENTITY:--}"
 swift build -c release
+bin_dir="$(swift build -c release --show-bin-path)"
 zsh scripts/build-icon.zsh
-APP="dist/Container Desk.app"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp Assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
-cp .build/release/ContainerDesk "$APP/Contents/MacOS/ContainerDesk"
-cp Assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
-for resource_bundle in .build/release/*.bundle(N); do
-  cp -R "$resource_bundle" "$APP/Contents/Resources/"
+mkdir -p dist
+build_stage=$(mktemp -d "$PWD/dist/.build-app.XXXXXX")
+trap 'rm -rf -- "$build_stage"' EXIT
+app="$build_stage/Container.app"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+cp "$bin_dir/ContainerDesk" "$app/Contents/MacOS/Container"
+cp Resources/Info.plist "$app/Contents/Info.plist"
+cp Assets/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
+cp scripts/install.zsh "$app/Contents/Resources/install.zsh"
+for resource_bundle in "$bin_dir"/*.bundle(N); do
+  cp -R "$resource_bundle" "$app/Contents/Resources/"
 done
-cat > "$APP/Contents/Info.plist" <<'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleExecutable</key><string>ContainerDesk</string>
-<key>CFBundleIconFile</key><string>AppIcon</string>
-<key>CFBundleIdentifier</key><string>dev.containerdesk.app</string>
-<key>CFBundleName</key><string>Container Desk</string>
-<key>CFBundleIconFile</key><string>AppIcon</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.1.0</string>
-<key>CFBundleVersion</key><string>1</string>
-<key>LSMinimumSystemVersion</key><string>14.0</string>
-<key>NSHighResolutionCapable</key><true/>
-</dict></plist>
-PLIST
-codesign --force --sign - "$APP"
-"$APP/Contents/MacOS/ContainerDesk" --check-catalog
-echo "Built $APP"
+plutil -lint "$app/Contents/Info.plist"
+sign_flags=(--force --sign "$signing_identity")
+if [[ "$signing_identity" != "-" ]]; then
+  sign_flags+=(--options runtime --timestamp)
+fi
+codesign "${sign_flags[@]}" "$app"
+codesign --verify --strict --verbose=2 "$app"
+"$app/Contents/MacOS/Container" --check-catalog
+# Replace the generated bundle only after validation succeeds.
+rm -rf -- dist/Container.app
+mv "$app" dist/Container.app
+print -r -- "Built dist/Container.app"

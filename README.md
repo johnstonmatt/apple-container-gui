@@ -1,4 +1,4 @@
-# Container Desk
+# Container
 
 A native SwiftUI macOS app for [Apple container](https://github.com/apple/container).
 The app calls the separately installed `container` CLI. It has no external Swift
@@ -6,7 +6,7 @@ package dependencies and does not embed Apple's runtime.
 
 ## Features
 
-Container Desk is organized around the things you manage, not the commands that
+Container is organized around the things you manage, not the commands that
 manage them. The sidebar lists each resource the CLI knows about:
 
 | Group | Resources |
@@ -68,14 +68,85 @@ For archive export/save/load in the app, choose an output/input file.
 ```zsh
 swift test
 zsh scripts/build-app.zsh
-open "dist/Container Desk.app"
+open "dist/Container.app"
 ```
 
 The zsh build script builds the release executable, copies the catalog resource
-bundle and the app icon from `Assets/`, ad-hoc signs the app, and checks the catalog
-from inside the finished app.
+bundle and the app icon from `Assets/`, copies `Resources/Info.plist`, signs the
+app, and verifies its signature and embedded catalog before replacing the previous
+build. The output is `dist/Container.app`, with bundle identifier
+`dev.johnstonmatt.container`. Local builds use ad-hoc signing; set
+`CODESIGN_IDENTITY` to a Developer ID Application identity for hardened runtime
+and timestamped signing.
 You can also open `Package.swift` in Xcode or use `swift run ContainerDesk`.
-The app is not notarized.
+Local builds are not notarized. The release workflow notarizes published builds.
+
+To build and install in `/Applications`, quit the app and run:
+
+```zsh
+./install-app
+```
+
+To install an existing bundle, use `zsh scripts/install.zsh dist/Container.app`.
+Set `CONTAINER_INSTALL_DIR` to choose another installation directory. Installation
+preserves the source build, stages the replacement, and restores the previous app
+if replacement fails. It refuses to overwrite an unrelated app or update while
+Container is running. The previous `Container Desk.app` has a different identity
+and is not migrated or removed. Apple's `container` CLI remains separately installed.
+The internal Swift package and module remain named `ContainerDesk`.
+
+## CI and releases
+
+This setup follows the build/release pipeline in `~/dev/johnstonmatt/lockin`,
+adapted to Container and zsh.
+
+- CI builds, runs the offline Swift tests, packages the app, verifies its signature,
+  and tests installation/replacement and a release archive in a temporary folder.
+- `release-please` opens release PRs from conventional commits on `main`. Merging
+  a release PR updates the two marked version fields in `Resources/Info.plist`,
+  writes `CHANGELOG.md`, and creates the release tag.
+- The release job tests that exact tag, imports a Developer ID certificate into a
+  temporary keychain, builds with hardened runtime and a secure timestamp,
+  notarizes and staples the app, checks Gatekeeper, and uploads
+  `Container-v<VERSION>-macos-arm64.zip`. Signing material is cleaned up even if
+  the job fails. Apple silicon runners are required for releases.
+- Like Lock In, the release-please `go` strategy avoids generating an unrelated
+  version file; the generic updater maintains the plist. Initial version is
+  `0.1.0`. Before 1.0, breaking changes bump the minor version. Use a
+  `Release-As: 1.0.0` commit footer to request 1.0 deliberately.
+
+Run the interactive setup once from your Mac:
+
+```zsh
+./scripts/setup-release.zsh
+```
+
+It requires `gh` authentication, Xcode command-line tools, a Developer ID
+Application `.p12` containing its private key, and an App Store Connect Team API
+`.p8` key. It validates the certificate in a temporary keychain and checks the
+notarization credentials with Apple, then asks before writing these repository
+secrets:
+
+| Secret | Value |
+| --- | --- |
+| `MACOS_CERTIFICATE` | Base64-encoded Developer ID `.p12` |
+| `MACOS_CERTIFICATE_PASSWORD` | Export password (may be empty) |
+| `MACOS_SIGN_IDENTITY` | Developer ID Application identity |
+| `APPLE_API_KEY` | Base64-encoded notarization `.p8` |
+| `APPLE_API_KEY_ID` | API key ID |
+| `APPLE_API_ISSUER` | Team issuer UUID |
+
+The release workflow checks required secrets before creating a release. Optionally
+set `RELEASE_PLEASE_TOKEN` to a fine-grained token for this repository with Contents,
+Pull requests, and Issues read/write access, so release-please PRs can trigger CI.
+Otherwise it uses `GITHUB_TOKEN`; enable Actions to create pull requests in the
+repository's Actions settings. Credentials are not copied from Lock In.
+
+Run packaging checks locally after building:
+
+```zsh
+zsh scripts/test-build.zsh
+```
 
 Use **Start Container System** if the service is stopped. On first use this also
 downloads and installs the recommended Linux kernel. Refresh inventories with ⌘R.

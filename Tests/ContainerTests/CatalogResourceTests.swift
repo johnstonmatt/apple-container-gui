@@ -2,6 +2,11 @@ import XCTest
 @testable import Container
 
 final class CatalogResourceTests: XCTestCase {
+    func testFindsCatalogInCurrentTestRunnerLayout() throws {
+        let pages = try CommandCatalog.bundledPages()
+        XCTAssertTrue(pages.contains { $0.path == ["run"] })
+    }
+
     func testBothSwiftPMBundleLayoutsAfterRelocation() throws {
         for path in ["commands.json", "Contents/Resources/commands.json"] {
             let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

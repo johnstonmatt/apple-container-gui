@@ -115,6 +115,8 @@ enum CommandCatalog {
             let testBundle = Bundle(for: ResourceMarker.self)
             roots = [Bundle.main.resourceURL, Bundle.main.bundleURL,
                      testBundle.resourceURL, testBundle.bundleURL,
+                     // Native SwiftPM puts resources beside the .xctest bundle.
+                     testBundle.bundleURL.deletingLastPathComponent(),
                      Bundle.main.executableURL?.deletingLastPathComponent()].compactMap { $0 }
         }
         for root in roots {

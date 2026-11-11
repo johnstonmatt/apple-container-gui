@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.0](https://github.com/johnstonmatt/apple-container-gui/compare/v0.2.0...v0.3.0) (2026-11-11)
+
+
+### Features
+
+* check runtime dependencies before opening the workspace ([76e3500](https://github.com/johnstonmatt/apple-container-gui/commit/76e3500636eb866d9d46e0ef0712021eb32dd334))
+
+
+### Bug Fixes
+
+* find command catalog beside native SwiftPM test bundles ([8f6538e](https://github.com/johnstonmatt/apple-container-gui/commit/8f6538e74e9673cdc0b251f7a886acc0bf1728e2))
+* load packaged catalog without build-machine paths ([c80edeb](https://github.com/johnstonmatt/apple-container-gui/commit/c80edeb5fc9397dc2fdcf924ef645aec253b9563))
+* load packaged catalog without build-machine paths ([c7d4a22](https://github.com/johnstonmatt/apple-container-gui/commit/c7d4a22a04237c21c3c60b54fcc79b3bab3348ba))
+
+
+### Refactoring
+
+* use Container naming throughout the project ([6ca64df](https://github.com/johnstonmatt/apple-container-gui/commit/6ca64df00618d1c535b14b6929a9029dcbdf1d19))
+
 ## [0.2.0](https://github.com/johnstonmatt/apple-container-gui/compare/v0.1.0...v0.2.0) (2026-11-11)
 
 

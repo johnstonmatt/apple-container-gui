@@ -18,6 +18,12 @@ cp scripts/install.zsh "$app/Contents/Resources/install.zsh"
 for resource_bundle in "$bin_dir"/*.bundle(N); do
   cp -R "$resource_bundle" "$app/Contents/Resources/"
 done
+# Both SwiftPM layouts are supported, but the catalog must actually be shipped.
+catalog_bundle="$app/Contents/Resources/ContainerDesk_ContainerDesk.bundle"
+if [[ ! -f "$catalog_bundle/commands.json" && ! -f "$catalog_bundle/Contents/Resources/commands.json" ]]; then
+  print -u2 -- 'Build is missing the command catalog resource bundle.'
+  exit 1
+fi
 plutil -lint "$app/Contents/Info.plist"
 sign_flags=(--force --sign "$signing_identity")
 if [[ "$signing_identity" != "-" ]]; then

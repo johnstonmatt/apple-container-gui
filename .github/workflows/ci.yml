@@ -32,3 +32,27 @@ jobs:
         run: zsh scripts/build-app.zsh
       - name: Check packaging and installer
         run: zsh scripts/test-build.zsh
+      - name: Archive for relocation test
+        run: ditto -c -k --keepParent dist/Container.app Container-launch-test.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: container-launch-test
+          path: Container-launch-test.zip
+
+  relocated-launch:
+    needs: check
+    runs-on: macos-latest
+    steps:
+      # Deliberately no checkout/build: generated SwiftPM accessors can hide
+      # packaging errors by finding resources in the original build directory.
+      - uses: actions/download-artifact@v4
+        with:
+          name: container-launch-test
+      - name: Launch the packaged app without build-machine resources
+        run: |
+          set -euo pipefail
+          ditto -xk Container-launch-test.zip "$RUNNER_TEMP/relocated"
+          app="$RUNNER_TEMP/relocated/Container.app"
+          codesign --verify --deep --strict "$app"
+          cd "$RUNNER_TEMP"
+          "$app/Contents/MacOS/Container" --check-catalog

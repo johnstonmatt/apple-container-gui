@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @main
-struct ContainerDeskApp: App {
+struct ContainerApp: App {
     @State private var store = Store()
     init() {
         if ProcessInfo.processInfo.arguments.contains("--check-catalog") {
@@ -125,8 +125,7 @@ struct SystemStatusCard: View {
     @Bindable var store: Store
 
     var title: String {
-        if store.connected { return "System running" }
-        return ContainerCLI.executable == nil ? "CLI not installed" : "System stopped"
+        store.dependencies.shortTitle
     }
 
     var detail: String {
@@ -158,29 +157,45 @@ struct SystemUnavailableView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label(ContainerCLI.executable == nil ? "Apple container isn’t installed" : "The container system is stopped",
-                  systemImage: "shippingbox")
+            Label(store.dependencies.title, systemImage: "shippingbox")
         } description: {
-            Text(store.connectionError ?? "Connecting to Apple container…")
+            Text(store.dependencies.message)
                 .textSelection(.enabled)
                 .frame(maxWidth: 520)
         } actions: {
-            if ContainerCLI.executable == nil {
+            DependencyActions(store: store)
+        }
+    }
+}
+
+struct DependencyActions: View {
+    @Bindable var store: Store
+
+    var body: some View {
+        VStack(spacing: 10) {
+            if store.dependencies == .checking {
+                ProgressView()
+            } else if store.dependencies == .missingCLI {
                 Link("Download Apple container", destination: URL(string: "https://github.com/apple/container/releases")!)
                     .buttonStyle(.borderedProminent)
-            } else {
+            } else if let title = store.dependencies.recoveryTitle {
                 VStack(spacing: 8) {
                     Button {
-                        Task { await store.perform(["system", "start", "--enable-kernel-install"], label: "Start system") }
+                        Task { await store.repairDependencies() }
                     } label: {
-                        Label(store.busy ? "Starting…" : "Start Container System", systemImage: "power")
+                        Label(store.busy ? "Setting up…" : title, systemImage: "arrow.down.circle")
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .disabled(store.busy || store.refreshing)
-                    Text("Downloads the recommended Linux kernel if needed.")
+                    if store.busy { ProgressView().controlSize(.small) }
+                    Text("Setup may download the recommended Linux kernel. An internet connection is required for downloads.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+            }
+            if store.dependencies != .checking {
+                Button("Check Again", systemImage: "arrow.clockwise") { Task { await store.refresh() } }
+                    .disabled(store.busy || store.refreshing)
             }
         }
     }

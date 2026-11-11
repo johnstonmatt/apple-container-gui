@@ -159,7 +159,7 @@ enum TerminalScript {
         guard let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") else {
             throw CLIError(message: "Terminal.app could not be found.")
         }
-        let file = FileManager.default.temporaryDirectory.appendingPathComponent("ContainerDesk-\(UUID().uuidString).command")
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("Container-\(UUID().uuidString).command")
         try contents(executable: executable, arguments: arguments, directory: directory, administrator: administrator)
             .write(to: file, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: file.path)

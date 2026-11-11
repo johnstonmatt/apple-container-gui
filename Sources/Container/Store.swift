@@ -63,6 +63,8 @@ final class Store {
     var inventories: [ResourceKind: [ResourceItem]] = [:]
     var inventoryErrors: [ResourceKind: String] = [:]
     var connected = false
+    var dependencies = DependencyState.checking
+    private let checkDependencies: @MainActor () async -> DependencyState
     var refreshing = false
     private var actionRunning = false
     var busy: Bool { actionRunning || operation.running }
@@ -75,21 +77,40 @@ final class Store {
     var pendingConfirmation: CommandRequest?
     let cli = ContainerCLI()
 
+    init(checkDependencies: @escaping @MainActor () async -> DependencyState = { await DependencyChecker.check() }) {
+        self.checkDependencies = checkDependencies
+    }
+
     var images: [String] { (inventories[.images] ?? []).map(\.id) }
 
     func refresh() async {
         guard !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
+        let checked = await checkDependencies()
+        guard checked == .ready else {
+            dependencies = checked
+            connected = false
+            connectionError = checked.message
+            containers = []
+            inventories = [:]
+            inventoryErrors = [:]
+            return
+        }
         do {
             let output = try await cli.run(ResourceKind.containers.jsonListArguments ?? [])
             containers = try JSONDecoder().decode([ContainerRecord].self, from: Data(output.utf8))
             inventories[.containers] = try ResourceKind.containers.items(fromJSON: output) ?? []
             connected = true
+            dependencies = .ready
             connectionError = nil
         } catch {
             connected = false
             connectionError = error.localizedDescription
+            dependencies = .unavailable(error.localizedDescription)
+            containers = []
+            inventories = [:]
+            inventoryErrors = [:]
             return
         }
         let kinds = ResourceKind.allCases.filter { $0 != .containers && $0.listCommand != nil }
@@ -121,6 +142,7 @@ final class Store {
     func perform(_ arguments: [String], label: String) async -> Bool {
         guard !busy else { return false }
         actionRunning = true
+        error = nil
         activity = label
         defer { actionRunning = false }
         do {
@@ -133,6 +155,12 @@ final class Store {
             activity = "\(label) failed"
             return false
         }
+    }
+
+    func repairDependencies() async {
+        guard !refreshing, let arguments = dependencies.recoveryArguments,
+              let label = dependencies.recoveryTitle else { return }
+        await perform(arguments, label: label)
     }
 
     func request(_ action: ResourceAction, on item: ResourceItem?) -> CommandRequest? {

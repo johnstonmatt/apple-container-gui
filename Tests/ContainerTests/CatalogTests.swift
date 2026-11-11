@@ -1,5 +1,5 @@
 import XCTest
-@testable import ContainerDesk
+@testable import Container
 
 final class CatalogTests: XCTestCase {
     private func command(_ id: String) throws -> CommandDefinition {

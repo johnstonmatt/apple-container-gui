@@ -1,5 +1,5 @@
 import XCTest
-@testable import ContainerDesk
+@testable import Container
 
 /// Opt in with RUN_CONTAINER_INTEGRATION_TESTS=1. Never touches existing containers.
 @MainActor
@@ -33,13 +33,19 @@ final class LiveCLITests: XCTestCase {
         }
     }
 
+    func testInstalledDependenciesAreReady() async throws {
+        try requireRuntime()
+        let state = await DependencyChecker.check()
+        XCTAssertEqual(state, .ready, state.message)
+    }
+
     func testIsolatedContainerLifecycle() async throws {
         try requireRuntime()
         let cli = ContainerCLI()
-        let name = "containerdesk-test-" + UUID().uuidString.lowercased().prefix(8)
+        let name = "container-test-" + UUID().uuidString.lowercased().prefix(8)
         var created = false
         do {
-            _ = try await cli.run(["run", "--detach", "--name", name, "alpine:latest", "sh", "-c", "echo containerdesk-ready; sleep 120"], timeout: 180)
+            _ = try await cli.run(["run", "--detach", "--name", name, "alpine:latest", "sh", "-c", "echo container-ready; sleep 120"], timeout: 180)
             created = true
             let inventory = try await cli.run(["list", "--all", "--format", "json"])
             let records = try JSONDecoder().decode([ContainerRecord].self, from: Data(inventory.utf8))
@@ -47,7 +53,7 @@ final class LiveCLITests: XCTestCase {
             let exec = try await cli.run(["exec", name, "printf", "%s", "literal $HOME; $(id)"])
             XCTAssertEqual(exec, "literal $HOME; $(id)")
             let logs = try await cli.run(["logs", "-n", "200", name])
-            XCTAssertTrue(logs.contains("containerdesk-ready"))
+            XCTAssertTrue(logs.contains("container-ready"))
             let inspect = try await cli.run(["inspect", name])
             XCTAssertNoThrow(try JSONSerialization.jsonObject(with: Data(inspect.utf8)))
             _ = try await cli.run(["stats", "--no-stream", name])

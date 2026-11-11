@@ -99,11 +99,36 @@ struct CommandDefinition: Identifiable, Sendable {
 }
 
 enum CommandCatalog {
-    static func bundledPages() throws -> [HelpPage] {
-        guard let url = Bundle.module.url(forResource: "commands", withExtension: "json") else {
-            throw CLIError(message: "The bundled command catalog is missing.")
+    private final class ResourceMarker {}
+
+    /// Never call Bundle.module here: some SwiftPM versions trap before callers
+    /// can handle a missing bundle and fall back to an absolute build-machine path.
+    static func bundledPages(resourceDirectories: [URL]? = nil) throws -> [HelpPage] {
+        let roots: [URL]
+        if let resourceDirectories {
+            roots = resourceDirectories
+        } else if Bundle.main.bundleURL.pathExtension == "app" {
+            // Installed apps must be self-contained, even on a development machine.
+            roots = [Bundle.main.resourceURL].compactMap { $0 }
+        } else {
+            // SwiftPM executable and XCTest layouts, without a compiled-in path.
+            let testBundle = Bundle(for: ResourceMarker.self)
+            roots = [Bundle.main.resourceURL, Bundle.main.bundleURL,
+                     testBundle.resourceURL, testBundle.bundleURL,
+                     // Native SwiftPM puts resources beside the .xctest bundle.
+                     testBundle.bundleURL.deletingLastPathComponent(),
+                     Bundle.main.executableURL?.deletingLastPathComponent()].compactMap { $0 }
         }
-        return try JSONDecoder().decode([HelpPage].self, from: Data(contentsOf: url))
+        for root in roots {
+            let bundle = root.appendingPathComponent("Container_Container.bundle")
+            // Native SwiftPM uses a flat bundle; swiftbuild uses a macOS bundle.
+            for relativePath in ["Contents/Resources/commands.json", "commands.json"] {
+                let url = bundle.appendingPathComponent(relativePath)
+                guard FileManager.default.fileExists(atPath: url.path) else { continue }
+                return try JSONDecoder().decode([HelpPage].self, from: Data(contentsOf: url))
+            }
+        }
+        throw CLIError(message: "The bundled command catalog is missing. Reinstall Container or reload the catalog from the installed CLI on the System page.")
     }
     static func definitions(_ pages: [HelpPage]) -> [CommandDefinition] {
         pages.map(CommandDefinition.parse).filter { !$0.path.isEmpty && $0.children.isEmpty }.sorted { $0.id < $1.id }

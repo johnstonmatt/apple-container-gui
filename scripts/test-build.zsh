@@ -54,4 +54,13 @@ ditto -c -k --keepParent "$app" "$test_root/Container.zip"
 ditto -xk "$test_root/Container.zip" "$test_root/unpacked"
 codesign --verify --deep --strict "$test_root/unpacked/Container.app"
 "$test_root/unpacked/Container.app/Contents/MacOS/Container" --check-catalog
+
+# Missing resources must produce a catchable error, never a Swift fatalError.
+ditto "$app" "$test_root/missing-catalog.app"
+rm -rf -- "$test_root/missing-catalog.app/Contents/Resources/Container_Container.bundle"
+codesign --force --sign - "$test_root/missing-catalog.app"
+catalog_exit=0
+"$test_root/missing-catalog.app/Contents/MacOS/Container" --check-catalog > "$test_root/missing.log" 2>&1 || catalog_exit=$?
+[[ "$catalog_exit" == 1 ]]
+grep -q 'bundled command catalog is missing' "$test_root/missing.log"
 print -- 'Packaging, archive, and installer checks passed.'

@@ -1,5 +1,5 @@
 import XCTest
-@testable import ContainerDesk
+@testable import Container
 
 final class CLITests: XCTestCase {
     func testDecodesBothStatusSchemas() throws {

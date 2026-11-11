@@ -151,6 +151,16 @@ zsh scripts/test-build.zsh
 Use **Start Container System** if the service is stopped. On first use this also
 downloads and installs the recommended Linux kernel. Refresh inventories with ⌘R.
 
+Startup and refresh explicitly check the CLI, the service's structured status,
+and the default Linux kernel in the data directory reported by the running service.
+A running service alone is not treated as ready: missing, empty, or broken-link
+kernels show **Install Linux Kernel**. Missing CLI installations show a download
+link, and stopped services show **Start Container System**. Setup only runs when
+you click its action; after it finishes the checks run again. **Check Again** also
+detects dependencies installed outside the app. Permission errors and unsupported
+status formats show the error instead of being mislabelled as missing kernels.
+These checks establish availability, not whether a kernel can successfully boot.
+
 ## Tests
 
 ```zsh

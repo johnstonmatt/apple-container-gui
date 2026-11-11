@@ -106,13 +106,18 @@ struct ContainerCLI: Sendable {
     }
 
     func run(_ arguments: [String], timeout: TimeInterval = 60) async throws -> String {
-        guard let executable = Self.executable else {
-            throw CLIError(message: "Install Apple container to get started, then refresh.")
-        }
-        let result = try await CommandRunner.run(executable: executable, arguments: arguments, timeout: timeout)
+        let result = try await execute(arguments, timeout: timeout)
         guard result.exitCode == 0 else {
             throw CLIError(message: result.display.trimmingCharacters(in: .whitespacesAndNewlines))
         }
         return result.stdout
+    }
+
+    /// Status uses a nonzero exit code for a stopped service; retain its JSON.
+    func execute(_ arguments: [String], timeout: TimeInterval = 60) async throws -> CommandOutput {
+        guard let executable = Self.executable else {
+            throw CLIError(message: "Install Apple container to get started, then refresh.")
+        }
+        return try await CommandRunner.run(executable: executable, arguments: arguments, timeout: timeout)
     }
 }

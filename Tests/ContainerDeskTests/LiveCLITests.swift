@@ -33,6 +33,12 @@ final class LiveCLITests: XCTestCase {
         }
     }
 
+    func testInstalledDependenciesAreReady() async throws {
+        try requireRuntime()
+        let state = await DependencyChecker.check()
+        XCTAssertEqual(state, .ready, state.message)
+    }
+
     func testIsolatedContainerLifecycle() async throws {
         try requireRuntime()
         let cli = ContainerCLI()

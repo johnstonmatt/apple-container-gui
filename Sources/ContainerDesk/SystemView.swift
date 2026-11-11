@@ -13,6 +13,18 @@ struct SystemView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 overview
+                if store.dependencies != .ready {
+                    section("Dependencies", footer: "No installation happens until you choose a setup action.") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(store.dependencies.title).font(.headline)
+                            Text(store.dependencies.message).foregroundStyle(.secondary).textSelection(.enabled)
+                            DependencyActions(store: store)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(18)
+                        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+                    }
+                }
                 if store.connected, let usage { diskUsage(usage) }
                 if store.connected, let properties {
                     section("Properties", footer: "Defaults the CLI uses for new containers, builds, and machines.") {
@@ -41,11 +53,11 @@ struct SystemView: View {
 
     var overview: some View {
         HStack(alignment: .center, spacing: 16) {
-            SymbolTile(symbol: "cpu", tint: running ? .green : .secondary, size: 54)
+            SymbolTile(symbol: "cpu", tint: store.connected ? .green : .secondary, size: 54)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Text("Container System").font(.title2.weight(.semibold))
-                    StatePill(state: running ? "running" : "stopped", active: running)
+                    StatePill(state: store.dependencies.shortTitle, active: store.connected)
                 }
                 Text(versionLine).foregroundStyle(.secondary)
                 if let host = hostLine { Text(host).font(.callout).foregroundStyle(.secondary) }
@@ -176,7 +188,10 @@ struct SystemView: View {
     }
 
     func load() async {
-        guard ContainerCLI.executable != nil else { return }
+        guard ContainerCLI.executable != nil else {
+            status = nil; versions = nil; usage = nil; properties = nil
+            return
+        }
         func json(_ arguments: [String]) async -> JSONValue? {
             guard let output = try? await store.cli.run(arguments) else { return nil }
             return try? JSONDecoder().decode(JSONValue.self, from: Data(output.utf8))

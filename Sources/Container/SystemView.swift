@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct SystemView: View {
     @Bindable var store: Store
@@ -6,6 +7,8 @@ struct SystemView: View {
     @State private var versions: JSONValue?
     @State private var usage: JSONValue?
     @State private var properties: JSONValue?
+    @State private var cli = ContainerCLI.resolution
+    @State private var cliError: String?
 
     var running: Bool { status?["status"]?.text.map { $0 == "running" } ?? store.connected }
 
@@ -13,6 +16,7 @@ struct SystemView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 overview
+                cliSection
                 if store.dependencies != .ready {
                     section("Dependencies", footer: "No installation happens until you choose a setup action.") {
                         VStack(alignment: .leading, spacing: 12) {
@@ -73,6 +77,69 @@ struct SystemView: View {
         }
         .padding(18)
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    var cliSection: some View {
+        section("Container CLI", footer: "Container starts, stops, and runs everything with this CLI, so choose the install whose services you want to use.") {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(cli.path ?? cli.requested ?? "No container CLI found")
+                            .font(.system(.callout, design: .monospaced))
+                            .foregroundStyle(cli.path == nil ? .red : .primary)
+                            .textSelection(.enabled)
+                        Text(cliSourceLine).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if cli.source == .chosen {
+                        Button("Find Automatically") { useCLI(nil) }.disabled(store.busy)
+                    }
+                    Button("Choose…") { chooseCLI() }
+                        .disabled(store.busy || cli.source == .environment)
+                        .help(cli.source == .environment ? "\(ContainerCLI.environmentKey) is set, so it decides the CLI." : "Choose a container executable")
+                }
+                if let cliError { Text(cliError).font(.caption).foregroundStyle(.red) }
+            }
+            .padding(14)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+    }
+
+    var cliSourceLine: String {
+        switch cli.source {
+        case .environment: "Set by \(ContainerCLI.environmentKey)"
+        case .chosen: "Chosen in Container"
+        case .automatic: "Found automatically in /usr/local/bin, /opt/homebrew/bin, or PATH"
+        }
+    }
+
+    func chooseCLI() {
+        let panel = NSOpenPanel()
+        panel.message = "Choose a container executable"
+        panel.prompt = "Use"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        // Builds installed outside /usr/local, eg. under ~/.local, live in hidden folders.
+        panel.showsHiddenFiles = true
+        panel.directoryURL = URL(fileURLWithPath: cli.path ?? "/usr/local/bin/container").deletingLastPathComponent()
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard FileManager.default.isExecutableFile(atPath: url.path) else {
+            cliError = "\(url.path) isn’t an executable file."
+            return
+        }
+        useCLI(url.path)
+    }
+
+    func useCLI(_ path: String?) {
+        ContainerCLI.choose(path)
+        cli = ContainerCLI.resolution
+        cliError = nil
+        // A different CLI can mean different services and commands, so check both again.
+        Task {
+            await store.refresh()
+            await store.catalog.reload()
+        }
     }
 
     var versionLine: String {
@@ -188,6 +255,7 @@ struct SystemView: View {
     }
 
     func load() async {
+        cli = ContainerCLI.resolution
         guard ContainerCLI.executable != nil else {
             status = nil; versions = nil; usage = nil; properties = nil
             return

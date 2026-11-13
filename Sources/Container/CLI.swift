@@ -99,10 +99,54 @@ struct ImageReference: Identifiable, Hashable, Sendable {
 }
 
 struct ContainerCLI: Sendable {
-    static var executable: String? {
-        let paths = ["/usr/local/bin/container", "/opt/homebrew/bin/container"] +
-            (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").map { "\($0)/container" }
-        return paths.first { FileManager.default.isExecutableFile(atPath: $0) }
+    /// Where the executable in use came from.
+    enum Source: Equatable, Sendable {
+        /// `CONTAINER_CLI_PATH`, eg. a launch from Terminal or a test run.
+        case environment
+        /// Chosen on the System page, or with `defaults write`.
+        case chosen
+        /// Found in the standard install locations or PATH.
+        case automatic
+    }
+
+    struct Resolution: Equatable, Sendable {
+        /// The executable to run, or nil if none was found or the override isn't executable.
+        let path: String?
+        let source: Source
+        /// The override path as given, after expanding `~`, so a broken one can be shown.
+        var requested: String? = nil
+    }
+
+    /// The same variable apple/container's integration tests use to pick the CLI.
+    static let environmentKey = "CONTAINER_CLI_PATH"
+    /// Also settable with `defaults write dev.johnstonmatt.container containerExecutable <path>`.
+    static let defaultsKey = "containerExecutable"
+    static let standardPaths = ["/usr/local/bin/container", "/opt/homebrew/bin/container"]
+
+    static var executable: String? { resolution.path }
+
+    static var resolution: Resolution {
+        resolve(environment: ProcessInfo.processInfo.environment,
+                chosen: UserDefaults.standard.string(forKey: defaultsKey))
+    }
+
+    /// An override wins outright. One that isn't executable resolves to no executable rather than
+    /// falling back, so the app never quietly runs a different CLI than the one asked for, which
+    /// would start or stop another install's services.
+    static func resolve(environment: [String: String], chosen: String?,
+                        isExecutable: (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }) -> Resolution {
+        for (raw, source) in [(environment[environmentKey], Source.environment), (chosen, .chosen)] {
+            guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { continue }
+            let path = (raw as NSString).expandingTildeInPath
+            return Resolution(path: path.hasPrefix("/") && isExecutable(path) ? path : nil, source: source, requested: path)
+        }
+        let paths = standardPaths + (environment["PATH"] ?? "").split(separator: ":").map { "\($0)/container" }
+        return Resolution(path: paths.first(where: isExecutable), source: .automatic)
+    }
+
+    /// Saves the CLI chosen on the System page, or clears it with nil to find one automatically.
+    static func choose(_ path: String?, defaults: UserDefaults = .standard) {
+        if let path { defaults.set(path, forKey: defaultsKey) } else { defaults.removeObject(forKey: defaultsKey) }
     }
 
     func run(_ arguments: [String], timeout: TimeInterval = 60) async throws -> String {
@@ -115,9 +159,15 @@ struct ContainerCLI: Sendable {
 
     /// Status uses a nonzero exit code for a stopped service; retain its JSON.
     func execute(_ arguments: [String], timeout: TimeInterval = 60) async throws -> CommandOutput {
-        guard let executable = Self.executable else {
-            throw CLIError(message: "Install Apple container to get started, then refresh.")
+        let resolution = Self.resolution
+        guard let executable = resolution.path else {
+            throw CLIError(message: resolution.requested.map(Self.unusableOverrideMessage)
+                ?? "Install Apple container to get started, then refresh.")
         }
         return try await CommandRunner.run(executable: executable, arguments: arguments, timeout: timeout)
+    }
+
+    static func unusableOverrideMessage(_ path: String) -> String {
+        "The container CLI chosen for Container isn’t an executable file: \(path)\n\nChoose another on the System page, or switch back to finding it automatically."
     }
 }

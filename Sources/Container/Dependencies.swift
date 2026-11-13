@@ -33,7 +33,7 @@ enum DependencyState: Equatable, Sendable {
     var message: String {
         switch self {
         case .checking: "Checking the CLI, service, and installed Linux kernel."
-        case .missingCLI: "Install Apple’s container package, then check again. Container looks in /usr/local/bin, /opt/homebrew/bin, and its PATH."
+        case .missingCLI: "Install Apple’s container package, then check again. Container looks in /usr/local/bin, /opt/homebrew/bin, and its PATH, or you can choose a CLI on the System page."
         case .serviceStopped: "Start the container service to continue. First-time setup also downloads the recommended Linux kernel if needed."
         case .missingKernel(let path): "The service is running, but its default Linux kernel is missing or empty. Install the recommended kernel to run containers.\n\nExpected kernel: \(path)"
         case .unavailable(let reason): reason
@@ -96,12 +96,15 @@ enum DependencyChecker {
 
     @MainActor
     static func check(
-        executable: String? = ContainerCLI.executable,
+        resolution: ContainerCLI.Resolution = ContainerCLI.resolution,
         readStatus: () async throws -> CommandOutput = {
             try await ContainerCLI().execute(["system", "status", "--format", "json"], timeout: 20)
         }
     ) async -> DependencyState {
-        guard executable != nil else { return .missingCLI }
+        guard resolution.path != nil else {
+            // A broken override isn't fixed by installing the package, so don't say it's missing.
+            return resolution.requested.map { .unavailable(ContainerCLI.unusableOverrideMessage($0)) } ?? .missingCLI
+        }
         do { return evaluate(try await readStatus()) }
         catch { return .unavailable("Couldn’t check the container service: \(error.localizedDescription)") }
     }

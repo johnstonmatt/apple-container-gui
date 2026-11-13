@@ -67,7 +67,8 @@ final class Store {
     private let checkDependencies: @MainActor () async -> DependencyState
     var refreshing = false
     private var actionRunning = false
-    var busy: Bool { actionRunning || operation.running }
+    var busy: Bool { actionRunning || operation.running || updater.installing }
+    let updater = AppUpdater()
     let operation = OperationSession()
     let catalog = CatalogModel()
     var error: String?
@@ -187,6 +188,7 @@ final class Store {
     }
 
     func run(_ request: CommandRequest) async {
+        guard !busy else { return }
         var draft = request.draft
         draft.terminal = draft.requiresTerminal(for: request.command)
         do {

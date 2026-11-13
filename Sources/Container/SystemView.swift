@@ -16,6 +16,14 @@ struct SystemView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 overview
+                section("Container App", footer: "Check for updates to this app on GitHub.") {
+                    HStack {
+                        Text("Version \(store.updater.currentVersion)")
+                        Spacer()
+                        Button("Check for Updates…") { Task { await store.updater.check() } }
+                            .disabled(store.updater.checking || store.updater.installing)
+                    }
+                }
                 cliSection
                 if store.dependencies != .ready {
                     section("Dependencies", footer: "No installation happens until you choose a setup action.") {

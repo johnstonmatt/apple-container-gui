@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0](https://github.com/johnstonmatt/apple-container-gui/compare/v0.3.0...v0.4.0) (2026-11-13)
+
+
+### Features
+
+* add on-demand app updates with verified installation and relaunch ([412783f](https://github.com/johnstonmatt/apple-container-gui/commit/412783fa8a29f666a433118a1ce8bdfe125a69ef))
+* **cli:** support custom container CLI selection and overrides ([9b12956](https://github.com/johnstonmatt/apple-container-gui/commit/9b129566ba47a5e34b03acccd4586aa28eeb643e))
+* support custom container CLI selection and environment overrides ([0558da2](https://github.com/johnstonmatt/apple-container-gui/commit/0558da2d2f13278b8c666fa067b853f5430a6abd))
+* **updater:** add verified on-demand updates and relaunch ([464c276](https://github.com/johnstonmatt/apple-container-gui/commit/464c27681242a707ead5c2ae11455b3125738c9d))
+
 ## [0.3.0](https://github.com/johnstonmatt/apple-container-gui/compare/v0.2.0...v0.3.0) (2026-11-11)
 
 

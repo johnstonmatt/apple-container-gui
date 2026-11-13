@@ -49,6 +49,56 @@ final class CLITests: XCTestCase {
         XCTAssertEqual(ImageReference(reference: "ghcr.io/owner/app:1").displayName, "ghcr.io/owner/app:1")
     }
 
+    func testExecutableSearchOrderWithoutOverrides() {
+        let installed: Set<String> = ["/opt/homebrew/bin/container", "/usr/local/bin/container", "/custom/bin/container"]
+        let resolve = { (path: String) in
+            ContainerCLI.resolve(environment: ["PATH": path], chosen: nil, isExecutable: installed.contains)
+        }
+        XCTAssertEqual(resolve("/custom/bin"), .init(path: "/usr/local/bin/container", source: .automatic))
+        XCTAssertEqual(ContainerCLI.resolve(environment: ["PATH": "/custom/bin"], chosen: nil) { $0 == "/custom/bin/container" },
+                       .init(path: "/custom/bin/container", source: .automatic))
+        XCTAssertEqual(ContainerCLI.resolve(environment: [:], chosen: nil) { _ in false }, .init(path: nil, source: .automatic))
+    }
+
+    func testOverridesWinAndEnvironmentWinsOverChosen() {
+        let installed: Set<String> = ["/usr/local/bin/container", "/fork/bin/container", "/env/bin/container"]
+        let chosen = ContainerCLI.resolve(environment: [:], chosen: "/fork/bin/container", isExecutable: installed.contains)
+        XCTAssertEqual(chosen, .init(path: "/fork/bin/container", source: .chosen, requested: "/fork/bin/container"))
+        let env = ContainerCLI.resolve(environment: [ContainerCLI.environmentKey: "/env/bin/container"],
+                                       chosen: "/fork/bin/container", isExecutable: installed.contains)
+        XCTAssertEqual(env, .init(path: "/env/bin/container", source: .environment, requested: "/env/bin/container"))
+        // Empty values don't count as an override.
+        XCTAssertEqual(ContainerCLI.resolve(environment: [ContainerCLI.environmentKey: " "], chosen: "", isExecutable: installed.contains).source,
+                       .automatic)
+    }
+
+    func testUnusableOverrideNeverFallsBackToAnotherInstall() {
+        let installed: Set<String> = ["/usr/local/bin/container"]
+        for (environment, chosen) in [([ContainerCLI.environmentKey: "/gone/container"], nil), ([:], "/gone/container"),
+                                      ([:], "relative/container")] as [([String: String], String?)] {
+            let resolution = ContainerCLI.resolve(environment: environment, chosen: chosen, isExecutable: installed.contains)
+            XCTAssertNil(resolution.path, "\(environment) \(chosen ?? "")")
+            XCTAssertNotNil(resolution.requested)
+            XCTAssertNotEqual(resolution.source, .automatic)
+        }
+    }
+
+    func testOverrideExpandsTilde() {
+        let expected = NSHomeDirectory() + "/.local/opt/container/bin/container"
+        let resolution = ContainerCLI.resolve(environment: [:], chosen: "~/.local/opt/container/bin/container") { $0 == expected }
+        XCTAssertEqual(resolution.path, expected)
+    }
+
+    func testChooseStoresAndClearsTheOverride() throws {
+        let suite = "ContainerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        ContainerCLI.choose("/fork/bin/container", defaults: defaults)
+        XCTAssertEqual(defaults.string(forKey: ContainerCLI.defaultsKey), "/fork/bin/container")
+        ContainerCLI.choose(nil, defaults: defaults)
+        XCTAssertNil(defaults.string(forKey: ContainerCLI.defaultsKey))
+    }
+
     func testFieldValidatorsMatchCompositeValidation() {
         XCTAssertTrue(RunConfiguration.validName(""))
         XCTAssertTrue(RunConfiguration.validName("web-1.api_v2"))

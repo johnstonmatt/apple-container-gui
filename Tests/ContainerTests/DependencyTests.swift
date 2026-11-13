@@ -10,13 +10,27 @@ final class DependencyTests: XCTestCase {
 
     func testMissingCLIDoesNotLaunchAnyCommand() async {
         var called = false
-        let state = await DependencyChecker.check(executable: nil) {
+        let state = await DependencyChecker.check(resolution: .init(path: nil, source: .automatic)) {
             called = true
             return CommandOutput()
         }
         XCTAssertEqual(state, .missingCLI)
         XCTAssertFalse(called)
         XCTAssertNil(state.recoveryArguments)
+    }
+
+    func testUnusableOverrideIsReportedInsteadOfMissingCLI() async {
+        for source in [ContainerCLI.Source.environment, .chosen] {
+            var called = false
+            let state = await DependencyChecker.check(resolution: .init(path: nil, source: source, requested: "/gone/container")) {
+                called = true
+                return CommandOutput()
+            }
+            guard case .unavailable(let reason) = state else { return XCTFail("Expected unavailable, got \(state)") }
+            XCTAssertTrue(reason.contains("/gone/container"))
+            XCTAssertFalse(called)
+            XCTAssertNil(state.recoveryArguments)
+        }
     }
 
     func testStoppedServiceJSONWithNonzeroExitCodeIsRecognized() {
@@ -52,7 +66,7 @@ final class DependencyTests: XCTestCase {
     }
 
     func testStatusLaunchFailuresRemainActionable() async {
-        let state = await DependencyChecker.check(executable: "/test/container") {
+        let state = await DependencyChecker.check(resolution: .init(path: "/test/container", source: .automatic)) {
             throw CLIError(message: "Timed out")
         }
         guard case .unavailable(let reason) = state else { return XCTFail("Expected unavailable") }

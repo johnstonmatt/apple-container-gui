@@ -63,6 +63,22 @@ For archive export/save/load in the app, choose an output/input file.
 - Apple's `container` CLI in `/usr/local/bin`, `/opt/homebrew/bin`, or PATH
 - Swift 6 / Xcode command-line tools to build
 
+### Use a different container CLI
+
+To run a CLI installed somewhere else, eg. your own build of `apple/container`, choose it
+under **Container CLI** on the System page. Container then starts, stops, and runs everything
+with that CLI and reloads its command catalog from it, so forms show any options your build
+adds. The same setting from a terminal:
+
+```zsh
+defaults write dev.johnstonmatt.container containerExecutable ~/.local/opt/container/bin/container
+defaults delete dev.johnstonmatt.container containerExecutable   # find it automatically again
+```
+
+`CONTAINER_CLI_PATH` overrides both, which is what `apple/container`'s own integration tests
+read. If the chosen CLI goes missing, Container says so instead of falling back to another
+install, because that install's services may not be the ones you're running.
+
 ## Build and run
 
 ```zsh

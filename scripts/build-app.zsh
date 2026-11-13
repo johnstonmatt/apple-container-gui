@@ -14,6 +14,7 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin_dir/Container" "$app/Contents/MacOS/Container"
 cp Resources/Info.plist "$app/Contents/Info.plist"
 cp Assets/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
+cp scripts/update.zsh "$app/Contents/Resources/update.zsh"
 cp scripts/install.zsh "$app/Contents/Resources/install.zsh"
 # Copy this target's resource bundle only, not stale bundles from prior builds.
 cp -R "$bin_dir/Container_Container.bundle" "$app/Contents/Resources/"

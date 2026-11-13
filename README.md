@@ -109,6 +109,20 @@ preserves the source build, stages the replacement, and restores the previous ap
 if replacement fails. It refuses to overwrite an unrelated app or update while
 Container is running. Apple's `container` CLI remains separately installed.
 
+## App updates
+
+Choose **Container → Check for Updates…**, or use the button on the System page.
+The dialog shows the installed version and release notes, then offers **Install and
+Relaunch** for a newer stable GitHub release. Updates are checked only on request.
+Installation waits until app operations finish; running containers and Apple’s
+separately installed CLI are not changed. Terminal sessions remain independent.
+
+In-app installation requires a Developer ID signed Container.app in a writable
+folder. Downloads must match the app’s signing team, bundle ID, and release version
+and pass Gatekeeper. A helper waits for the app to quit, runs the release’s bundled
+installer, and reopens the app. Installation failures are reported on relaunch.
+Local ad-hoc builds can check releases but must be updated manually.
+
 ## CI and releases
 
 This setup follows the build/release pipeline in `~/dev/johnstonmatt/lockin`,

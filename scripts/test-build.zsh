@@ -9,6 +9,7 @@ plist="$app/Contents/Info.plist"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleName' "$plist")" == Container ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$plist")" == Container ]]
 cmp Resources/Info.plist "$plist"
+cmp scripts/update.zsh "$app/Contents/Resources/update.zsh"
 cmp scripts/install.zsh "$app/Contents/Resources/install.zsh"
 [[ -s "$app/Contents/Resources/AppIcon.icns" ]]
 codesign --verify --deep --strict "$app"

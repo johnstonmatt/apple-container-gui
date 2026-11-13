@@ -20,10 +20,15 @@ struct ContainerApp: App {
         WindowGroup {
             ContentView(store: store)
                 .frame(minWidth: 900, minHeight: 600)
-                .task { await store.refresh(); await store.catalog.reload() }
+                .task { store.updater.restoreResult(); await store.refresh(); await store.catalog.reload() }
         }
         .defaultSize(width: 1200, height: 780)
-        .commands { CommandGroup(after: .newItem) {
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") { Task { await store.updater.check() } }
+                    .disabled(store.updater.checking || store.updater.installing)
+            }
+            CommandGroup(after: .newItem) {
             Button("Refresh") { Task { await store.refresh() } }.keyboardShortcut("r")
         } }
     }
@@ -52,6 +57,7 @@ struct ContentView: View {
                     }
                 }
         }
+        .sheet(isPresented: Binding(get: { store.updater.presented }, set: { store.updater.presented = $0 })) { AppUpdateView(store: store) }
         .sheet(item: $store.sheet) { sheet in
             switch sheet {
             case .newContainer(let image): RunSheet(store: store, initialImage: image)
